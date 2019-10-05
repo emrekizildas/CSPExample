@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -29,6 +30,18 @@ namespace CSPExample
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            app.Use((context, next) =>
+            {
+                var rng = new RNGCryptoServiceProvider();
+                var nonceBytes = new byte[32];
+                rng.GetBytes(nonceBytes);
+                var nonce = Convert.ToBase64String(nonceBytes);
+                context.Items.Add("ScriptNonce", nonce);
+                context.Response.Headers.Add("Content-Security-Policy",
+                    new[] { string.Format("script-src 'self' 'nonce-{0}'", nonce) });
+                return next();
+            });
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
